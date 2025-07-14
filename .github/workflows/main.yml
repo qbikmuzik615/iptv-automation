@@ -1,0 +1,72 @@
+name: IPTV Automation All-in-One
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * MON' # every Monday at 08:00 UTC
+
+jobs:
+  bootstrap-and-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up folders
+        run: |
+          mkdir -p scripts lists
+
+      - name: Download scripts
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/qbikmuzik615/iptv-automation-templates/main/scripts/combine_channels.sh -o scripts/combine_channels.sh
+          curl -fsSL https://raw.githubusercontent.com/qbikmuzik615/iptv-automation-templates/main/scripts/shorten_epg_links.py -o scripts/shorten_epg_links.py
+          curl -fsSL https://raw.githubusercontent.com/qbikmuzik615/iptv-automation-templates/main/scripts/check_links.py -o scripts/check_links.py
+          chmod +x scripts/*.sh
+
+      - name: Download make_playlist.py
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/Free-TV/IPTV/master/make_playlist.py -o make_playlist.py
+
+      - name: Download EPG and lists
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/Free-TV/IPTV/master/epglist.txt -o epglist.txt
+          for L in zz_news_en.md zz_movies.md zz_documentaries_en.md usa_vod.md usa.md australia.md; do
+            curl -fsSL "https://raw.githubusercontent.com/Free-TV/IPTV/master/lists/$L" -o "lists/$L"
+          done
+
+      - name: Create .gitignore and README.md
+        run: |
+          echo -e "__pycache__/\n*.pyc\n*.pyo\n*.pyd\n.DS_Store\nThumbs.db\n*.log\nplaylist_combined.m3u\nepg_shortened_links.txt\n.vscode/\n.idea/" > .gitignore
+          cat > README.md <<'EOF'
+          # IPTV Automation
+
+          This repo is fully automated by GitHub Actions.
+          - Scripts and channel lists are updated on push and on schedule.
+          - All files are cloud-managed, no shell required.
+
+          ## How to extend
+
+          - Add your own scripts or lists in the respective folders.
+          - See .github/workflows/main.yml for pipeline logic.
+          EOF
+
+      - name: Run combine_channels (as example)
+        run: bash scripts/combine_channels.sh || echo "combine_channels.sh failed (if no inputs yet, that's ok)"
+
+      # Add more build/test/deploy steps as needed
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-files
+          path: |
+            *.m3u
+            *.txt
+            lists/
+            scripts/
+            make_playlist.py
+            README.md
+
+      # Optional: notify, deploy, etc.
