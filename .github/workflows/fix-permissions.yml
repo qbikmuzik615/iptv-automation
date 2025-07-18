@@ -1,0 +1,13 @@
+name: Auto Fix Permissions
+
+on: [push, pull_request]
+
+jobs:
+  fix-permissions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fix script permissions
+        run: |
+          find . -type f -name "*.sh" -exec chmod +x {} \;
